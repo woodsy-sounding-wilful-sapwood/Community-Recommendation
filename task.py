@@ -2,22 +2,20 @@ import tensorflow as tf
 import numpy as np
 import datetime
 import os
-import sh
 import math
 import argparse
+import json
 
 from scipy.sparse import load_npz
 from tensorflow.contrib.factorization import WALSModel
-
-def toSparseTensor(X):
-	coo = X.tocoo()
-	indices = np.column_stack((X.row, X.col))
-	return tf.SparseTensor(indices, coo.data, coo.shape)
+from io import BytesIO
+from tensorflow.python.lib.io import file_io
+from tensorflow.core.framework.summary_pb2 import Summary
 
 def getModel(data, args):
 	rWeight, cWeight = None, None
 	nRows, nCols = data.shape
-	if args['weights']:
+	if True:
 		rWeight = np.ones(nRows)
 		cWeight = np.ones(nCols)
 
@@ -69,6 +67,7 @@ def saveModel(args, rFactor, cFactor):
 	np.save(os.path.join(modelDir, 'col'), cFactor)
 
 	if gsModelDir:
+		import sh
 		sh.gsutil('cp', '-r', os.path.join(modelDir, '*'), gsModelDir)
 
 def rmse(U, V, M):
@@ -100,6 +99,7 @@ def getargs():
 		'--n_components',
 		type=int,
 		help='Number of latent factors',
+		required=True
 	)
 	parser.add_argument(
 		'--niter',
@@ -125,17 +125,59 @@ def getargs():
 		action='store_true',
 		help='Switch to turn on or off hyperparam tuning'
 	)
+	parser.add_argument(
+		'--run-predict',
+		default=False,
+		help='Switch to run a prediction job instead of training',
+	)
+	parser.add_argument(
+		'--u',
+		help='Location of the row factors',
+	)
+	parser.add_argument(
+		'--v',
+		help='Location of the column factors',
+	)
+	parser.add_argument(
+		'--user-id',
+		help='ID of the user for whom predictions are needed',
+	)
+
 	args = parser.parse_args().__dict__
+
 	args['weights'] = True
 	args['wt_type'] = 0
 	args['job_name'] = 'netflix'
+
+	if args['hypertune']:
+		trial = json.loads(os.environ.get('TF_CONFIG', '{}')).get('task', {}).get('trial', '')
+		args['job_dir'] = os.path.join(args['job_dir'], trial)
+
 	return args
+
+def loadMatrix(loc):
+	if loc.startswith('gs://'):
+		return load_npz(BytesIO(file_io.read_file_to_string(loc, binary_mode=True))).tocoo()
+	return load_npz(loc).tocoo()
+
+def predict(userIdx, alreadyRated, U, V, nRatings):
+	predicted = np.argsort(V.dot(U[userIdx]).reverse())[0 : len(alreadyRated) + nRatings]
+	return [i for i in predicted if i not in alreadyRated]
+
+def hyperLog(args, rmse):
+	log = Summary(value = [Summary.Value(tag = 'training/hptuning/metric', simple_value = rmse)])
+	logpath = os.path.join(args['job_dir'], 'eval')
+	writer = tf.summary.FileWriter(logpath)
+	writer.add_summary(log)
+	writer.flush()
+
+def checkpointSaver(res):
+	dump(res, 'checkpoint')
 
 if __name__ == '__main__':
 	args = getargs()
-	print(args)
-	train = load_npz(args['train_data']).tocoo()
-	test = load_npz(args['test_data']).tocoo()
+	train = loadMatrix(args['train_data'])
+	test = loadMatrix(args['test_data'])
 	tf.logging.set_verbosity(tf.logging.INFO)
 	U, V = trainModel(args, train)
 	saveModel(args, U, V)
@@ -143,7 +185,7 @@ if __name__ == '__main__':
 	testError = rmse(U, V, test)
 
 	if args['hypertune']:
-		raise NotImplementedError
+		hyperLog(args, testError)
 
 	tf.logging.info('Train RMSE = {0}'.format(trainError))
 	tf.logging.info('Test RMSE = {0}'.format(testError))
