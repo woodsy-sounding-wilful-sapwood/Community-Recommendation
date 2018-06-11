@@ -13,11 +13,9 @@ from tensorflow.python.lib.io import file_io
 from tensorflow.core.framework.summary_pb2 import Summary
 
 def getModel(data, args):
-	rWeight, cWeight = None, None
 	nRows, nCols = data.shape
-	if True:
-		rWeight = np.ones(nRows)
-		cWeight = np.ones(nCols)
+	rWeight = np.ones(nRows)
+	cWeight = np.ones(nCols)
 
 	with tf.Graph().as_default():
 		tensor = tf.SparseTensor(np.column_stack((data.row, data.col)), (data.data).astype(np.float32), data.shape)
@@ -82,42 +80,42 @@ def getargs():
 	parser = argparse.ArgumentParser()
 	parser.add_argument(
 		'--train-data',
-		help='GCS or local paths to training data',
+		help = 'GCS or local path to training data',
 		required=True
 	)
 	parser.add_argument(
 		'--test-data',
-		help='GCS or local paths to testing data',
+		help = 'GCS or local path to testing data',
 		required=True
 	)
 	parser.add_argument(
 		'--job-dir',
-		help='GCS or local paths to output directory',
-		required=True
+		help = 'GCS or local path to output directory',
+		default = '.'
 	)
 	parser.add_argument(
 		'--n_components',
-		type=int,
-		help='Number of latent factors',
-		required=True
+		type = int,
+		help = 'Number of latent factors',
+		default = 10
 	)
 	parser.add_argument(
 		'--niter',
-		type=int,
-		help='Number of iterations',
-		required=True
+		type = int,
+		help = 'Number of iterations',
+		default = 20
 	)
 	parser.add_argument(
 		'--regularization',
-		type=float,
-		help='L2 regularization factor',
-		required=True
+		type = float,
+		help = 'L2 regularization factor',
+		default = 0.05
 	)
 	parser.add_argument(
-		'--unobserved_weight',
+		'--unobserved-weight',
 		type=float,
 		help='Weight for unobserved values',
-		required=True
+		default = 0
 	)
 	parser.add_argument(
 		'--hypertune',
@@ -126,28 +124,11 @@ def getargs():
 		help='Switch to turn on or off hyperparam tuning'
 	)
 	parser.add_argument(
-		'--run-predict',
-		default=False,
-		help='Switch to run a prediction job instead of training',
+		'--job-name',
+		default='myjob',
+		help='Only needed if you are training on Google Cloud'
 	)
-	parser.add_argument(
-		'--u',
-		help='Location of the row factors',
-	)
-	parser.add_argument(
-		'--v',
-		help='Location of the column factors',
-	)
-	parser.add_argument(
-		'--user-id',
-		help='ID of the user for whom predictions are needed',
-	)
-
 	args = parser.parse_args().__dict__
-
-	args['weights'] = True
-	args['wt_type'] = 0
-	args['job_name'] = 'netflix'
 
 	if args['hypertune']:
 		trial = json.loads(os.environ.get('TF_CONFIG', '{}')).get('task', {}).get('trial', '')
@@ -159,10 +140,6 @@ def loadMatrix(loc):
 	if loc.startswith('gs://'):
 		return load_npz(BytesIO(file_io.read_file_to_string(loc, binary_mode=True))).tocoo()
 	return load_npz(loc).tocoo()
-
-def predict(userIdx, alreadyRated, U, V, nRatings):
-	predicted = np.argsort(V.dot(U[userIdx]).reverse())[0 : len(alreadyRated) + nRatings]
-	return [i for i in predicted if i not in alreadyRated]
 
 def hyperLog(args, rmse):
 	log = Summary(value = [Summary.Value(tag = 'training/hptuning/metric', simple_value = rmse)])
