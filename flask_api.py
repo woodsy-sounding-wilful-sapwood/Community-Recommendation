@@ -6,7 +6,6 @@ import numpy as np
 from flask import Flask, request
 from subprocess import check_output
 from urllib.request import urlopen
-from pandas import DataFrame
 from redis import Redis
 from io import BytesIO
 from multiprocessing import Process
