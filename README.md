@@ -9,6 +9,11 @@ recommendations of content tied to a user
 * [Pandas (0.22.0+)](https://pandas.pydata.org/)
 * [Scikit-Learn (0.19.1+)](http://scikit-learn.org/stable/index.html)
 
+Additionally, to run the api you need:
+
+* [Flask (1.0.2+)](http://flask.pocoo.org/)
+* [Redis-Py (2.10.5+)](https://redislabs.com/lp/python-redis/)
+
 ## Usage
 
 ### Overview
@@ -45,3 +50,14 @@ $ python predict.py --u model\row.npy --v model\col.npy --user-id 12
 ```
 `12` here is the row idex of the user in our matrix and `[ 990 1973 1255 2268  644]` are the column indices of the recommended music in our matrix. To recover the actual user id and music id, you need to set `--save-map` in `preprocess.py` and supply the two maps to `predict.py`. See help for more details. (Accesible by running `python preprocess.py --help` and `python task.py --help`)
 
+
+### API Overview
+At present, the API is tightly coupled with the [Collaborative Communities project](https://github.com/fresearchgroup/Collaboration-System). It is only useful for making recommendations based on a CC user's viewing history. To use the API, you will need to have the [event logging module](https://github.com/fresearchgroup/Collaboration-System/tree/eventlogs) installed.
+
+To get recommendations, make a `GET` request to the server with the user id and (optionally) the number of recommendations needed.
+
+eg: `http://127.0.0.1:3445/rec?user=12&nrecs=3`
+
+**Before the API is able to generate recommendations, it must be trained.** To train the API make a POST request to the server specifying the URI of the logs and optionally specify the parameters for preprocessing and training.
+
+eg: `curl -i -X POST -H 'Content-Type: application/json' -d '{"article-view": "http://localhost:8000/logapi/event/article/view", "check": 4}' http://localhost:3445/train`
