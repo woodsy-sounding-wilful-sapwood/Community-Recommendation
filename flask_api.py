@@ -22,7 +22,7 @@ TRAIN_ARGS = {'niter', 'n_components', 'unobserved_weight', 'regularization'}
 VIEW_WEIGHT = 1
 
 #To train run this
-#curl -i -X POST -H 'Content-Type: application/json' -d '{"article-view": "http://localhost:8000/logapi/event/article/view", "check": 4}' http://locaost:3445/train
+#curl -i -X POST -H 'Content-Type: application/json' -d '{"article-view": "http://localhost:8000/logapi/event/article/view"}' http://locaost:3445/train
 
 @app.route('/rec')
 def get_recommendations():
