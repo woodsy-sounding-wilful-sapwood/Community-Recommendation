@@ -61,3 +61,16 @@ eg: `http://127.0.0.1:3445/rec?user=12&nrecs=3`
 **Before the API is able to generate recommendations, it must be trained.** To train the API make a POST request to the server specifying the URI of the logs and optionally specify the parameters for preprocessing and training.
 
 eg: `curl -i -X POST -H 'Content-Type: application/json' -d '{"article-view": "http://localhost:8000/logapi/event/article/view", "check": 4}' http://localhost:3445/train`
+
+### Installation
+
+#### For Ubuntu
+
+* Install redis (eg: `sudo apt-get install redis-server`)
+* Create a virtual environment (eg: `virtualenv --system-site-packages -p python3 rec_api`)
+* Activate the virtual environment (eg: `source ~/rec_api/bin/activate`)
+* Clone this repo (eg: `git clone https://github.com/woodsy-sounding-wilful-sapwood/Community-Recommendation.git`)
+* Install dependencies (eg: `pip3 install -r requirements.txt`)
+* Set up Flask (eg: `export FLASK_APP=flask_api.py`)
+* Run the server (eg: `flask run --host 0.0.0.0 --port 3445`)
+* Execute POST and GET requests as outlined above
