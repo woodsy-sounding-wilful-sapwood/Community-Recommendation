@@ -158,14 +158,14 @@ def preprocess(data, format = 'csv', kwargs = '{}', col_order = [0, 1, 2], k_cor
         result['user_map'] = {k : v for v, k in enumerate(user_map[0])}
         result['item_map'] = item_map[0].tolist()
 
-    if timestamp:
-        times = df[cols[3]].values.astype(np.float32)
-        result['timestamp'] = coo_matrix((times, (user_map[1], item_map[1])), shape = shape)
-
     shape = (user_map[0].size, item_map[0].size)
     train_ratings, test_ratings, train_users, test_users, train_items, test_items = train_test_split(ratings, user_map[1], item_map[1], test_size = 1 - train_size)
     result['train'] = coo_matrix((train_ratings.astype(dtype), (train_users, train_items)), shape = shape)
     result['test'] = coo_matrix((test_ratings.astype(dtype), (test_users, test_items)), shape = shape)
+
+    if timestamp:
+        times = df[cols[3]].values.astype(np.float32)
+        result['timestamp'] = coo_matrix((times, (user_map[1], item_map[1])), shape = shape)
 
     if debug:
         print('train: ', repr(result['train'] ))
