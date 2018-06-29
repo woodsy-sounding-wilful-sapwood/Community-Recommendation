@@ -9,24 +9,38 @@ from urllib.request import urlopen
 from redis import Redis
 from io import BytesIO
 from multiprocessing import Process
+from os import getenv
 
 import core.predict
 import core.preprocess
 import core.train
 
 app = Flask(__name__)
-r = Redis(host = '127.0.0.1', port = 6379)
-DEFAULT_ARGS = {'format': 'json', 'kwargs': {}, 'col_order': ['userID', 'articleID', 'ratings'], 'k_cores': 0, 'save_map': True, 'train_size': 0.99, 'dtype': np.float32, 'debug': False, 'niter': 20, 'n_components': 10, 'unobserved_weight': 0, 'regularization': 0.05}
+r = Redis(host = getenv('REDIS_HOSTNAME', 'redis'), port = int(getenv('REDIS_PORT', 6379)))
+DEFAULT_ARGS = {'format': getenv('REC_FORMAT', 'json'),
+				 'kwargs': {},
+				 'col_order': [getenv('REC_COL_USER', 'userID'), getenv('REC_COL_ARTICLE', 'articleID'), getenv('REC_COL_RATING', 'ratings')], 
+				 'k_cores': int(getenv('REC_K_CORES', 0)), 
+				 'save_map': bool(getenv('REC_SAVE_MAP', True)), 
+				 'train_size': float(getenv('REC_TRAIN_SIZE', 0.99)), 
+				 'dtype': np.dtype(getenv('REC_DTYPE', np.float32)), 
+				 'debug': bool(getenv('REC_DEBUG', False)), 
+				 'niter': int(getenv('REC_NITER', 20)), 
+				 'n_components': int(getenv('REC_N_COMPONENTS', 20)), 
+				 'unobserved_weight': float(getenv('REC_UNOBSEREVED_WEIGHT', 0)), 
+				 'regularization': float(getenv('REC_REGULARIZATION', 0.05))
+				 }
 PREPROCESS_ARGS = {'format', 'kwargs', 'col_order', 'k_cores', 'save_map', 'train_size', 'dtype', 'debug'}
 TRAIN_ARGS = {'niter', 'n_components', 'unobserved_weight', 'regularization'}
-VIEW_WEIGHT = 1
+VIEW_WEIGHT = int(getenv('REC_VIEW_WEIGHT', 1))
+DEFAULT_RECS = int(getenv('REC_NRECS', 5))
 
 #To train run this
 #curl -i -X POST -H 'Content-Type: application/json' -d '{"article-view": "http://localhost:8000/logapi/event/article/view"}' http://locaost:3445/train
 
 @app.route('/rec')
 def get_recommendations():
-	result = core.predict.predict(redis_get_helper('U'), redis_get_helper('V'), request.args.get('user'), request.args.get('nrecs', 5), user_map = json.loads(r.get('user_map').decode()), item_map = json.loads(r.get('item_map').decode()))
+	result = core.predict.predict(redis_get_helper('U'), redis_get_helper('V'), request.args.get('user'), request.args.get('nrecs', DEFAULT_RECS), user_map = json.loads(r.get('user_map').decode()), item_map = json.loads(r.get('item_map').decode()))
 	return result
 
 def redis_set_helper(key, data, pipe):
