@@ -62,7 +62,7 @@ def train_wals(args):
 	link = args['article-view']
 	while link:
 		q = Request(link)
-		q.add_header('Auth', 'Token ' + AUTH_TOKEN)
+		q.add_header('Authorization', 'Token ' + AUTH_TOKEN)
 		request = urlopen(q)
 		logs += json.loads(request.read().decode())['result']
 		link = log[-1].get('next_link', '')
