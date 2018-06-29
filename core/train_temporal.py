@@ -25,7 +25,7 @@ def dev(uid, day, user_mean_time, beta):
 def update_learn_rate(itr, learn_rate, max_learn_rate, loss, prev_loss, bold, beta):
 	if learn_rate < 0:
 		return learn_rate
-	if bold && itr > 1:
+	if bold and itr > 1:
 		learn_rate *= (0.5 + (abs(prev_loss) > abs(loss)))
 	elif decay > 0 and decay < 1:
 		learn_rate *= decay
@@ -54,7 +54,7 @@ def init_model(train, time_mat, beta, nbins):
 	U = rand_array((nusers, ncomponents))
 	V = rand_array((nitems, ncomponents))
 	global_mean_time = mean_time(train, time_mat) #sparse_type_coo
-	user_mean_time = np.fromiter(mean_time(train.getrow(i), time_mat) or global_mean_time for i in range(nusers), type = np.float32, count = nusers) #sparse_type_csr
+	user_mean_time = np.fromiter((mean_time(train.getrow(i), time_mat) or global_mean_time for i in range(nusers)), type = np.float32, count = nusers) #sparse_type_csr
 	return max_stamp, min_stamp, user_biases, item_biases, alpha_u, b_it, y, alpha_uk, b_ut, p_ukt, c_u, c_ut, U, V, global_mean_time, user_mean_time
 
 def train_model_helper(train, time_mat, user_mean_time, item_biases, b_it, user_biases, c_u, c_ut, b_ut, alpha_u, p_ukt, alpha_uk, y, U, V, reg_item, reg_user, reg_bias, learn_rate, bold, niter, tol):
