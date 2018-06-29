@@ -89,6 +89,17 @@ def get_args():
         type = bool,
         default = False
         )
+    parser.add_argument(
+        '--timestamp',
+        help = 'Save timestamp details.',
+        type = bool,
+        default = False
+        )
+    parser.add_argument(
+        '--timestamp-file',
+        help = 'Name of the the output file containing the training matrix. Default: test.npz',
+        default = 'timestamp.npz'
+        )
 
     parsed, unknown = parser.parse_known_args()
 
@@ -122,7 +133,7 @@ def k_filter(df, cols, k):
         return df
     return k_filter(df, cols, k)
 
-def preprocess(data, format = 'csv', kwargs = '{}', col_order = [0, 1, 2], k_cores = 5, save_map = False, train_size = 0.75, dtype = np.float32, debug = False):
+def preprocess(data, format = 'csv', kwargs = '{}', col_order = [0, 1, 2], k_cores = 5, save_map = False, train_size = 0.75, dtype = np.float32, debug = False, timestamp = False):
     result = {}
     if format == 'csv':
         df = pandas.read_csv(data, **kwargs)
@@ -147,6 +158,10 @@ def preprocess(data, format = 'csv', kwargs = '{}', col_order = [0, 1, 2], k_cor
         result['user_map'] = {k : v for v, k in enumerate(user_map[0])}
         result['item_map'] = item_map[0].tolist()
 
+    if timestamp:
+        times = df[cols[3]].values.astype(np.float32)
+        result['timestamp'] = coo_matrix((times, (user_map[1], item_map[1])), shape = shape)
+
     shape = (user_map[0].size, item_map[0].size)
     train_ratings, test_ratings, train_users, test_users, train_items, test_items = train_test_split(ratings, user_map[1], item_map[1], test_size = 1 - train_size)
     result['train'] = coo_matrix((train_ratings.astype(dtype), (train_users, train_items)), shape = shape)
@@ -161,11 +176,14 @@ def preprocess(data, format = 'csv', kwargs = '{}', col_order = [0, 1, 2], k_cor
 def main():
     args, kwargs = get_args()
 
-    result = preprocess(args.data, format = args.format, kwargs = kwargs, col_order = args.col_order, k_cores = args.k_cores, save_map = args.save_map, output = args.output, user_map = args.user_map, item_map = args.item_map, train_size = args.train_size, dtype = args.dtype, debug=args.debug)
+    result = preprocess(args.data, format = args.format, kwargs = kwargs, col_order = args.col_order, k_cores = args.k_cores, save_map = args.save_map, output = args.output, user_map = args.user_map, item_map = args.item_map, train_size = args.train_size, dtype = args.dtype, debug=args.debug, timestamp = args.timestamp)
 
-    if save_map:
+    if args.save_map:
         json_dump(result['user_map'], os.path.join(args.output, args.user_map))
         json_dump(result['item_map'], os.path.join(args.output, args.item_map))
+
+    if args.timestamp:
+        save_npz(os.path.join(args.output, args.timestamp_file), result['timestamp'])
 
     save_npz(os.path.join(args.output, args.train_file), result['train'])
     save_npz(os.path.join(args.output, args.test_file), result['test'])
