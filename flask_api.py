@@ -14,6 +14,7 @@ from os import getenv
 import core.predict
 import core.preprocess
 import core.train
+import core.train_temporal
 
 app = Flask(__name__)
 r = Redis(host = getenv('REDIS_HOSTNAME', 'redis'), port = int(getenv('REDIS_PORT', 6379)))
@@ -36,7 +37,7 @@ TEMPORAL_TRAIN_ARGS = {'beta', 'nbins', 'reg_bias', 'niter', 'learn_rate', 'max_
 VIEW_WEIGHT = int(getenv('REC_VIEW_WEIGHT', 1))
 DEFAULT_RECS = int(getenv('REC_NRECS', 5))
 AUTH_TOKEN = getenv('LOG_AUTH_TOKEN', '')
-MODEL_TYPE = getenv('DEFAULT_MODEL', 'wals')
+DEFAULT_MODEL = getenv('DEFAULT_MODEL', 'wals')
 
 #To train run this
 #curl -i -X POST -H 'Content-Type: application/json' -d '{"article-view": "http://localhost:8000/logapi/event/article/view"}' http://locaost:3445/train
@@ -54,22 +55,33 @@ def redis_set_helper(key, data, pipe):
 def redis_get_helper(key):
 	return np.load(BytesIO(r.get(key)))
 
-def train_wals(args):
+def load_default_args(args):
 	for k, v in DEFAULT_ARGS.items():
 		if k not in args:
 			args[k] = v
+	return args
+
+def fetch_logs(link, time = False):
 	logs = []
-	link = args['article-view']
 	while link:
-		q = Request(link)
-		q.add_header('Authorization', 'Token ' + AUTH_TOKEN)
+		q = Request(link, headers = {'Authorization': 'Token ' + AUTH_TOKEN})
 		request = urlopen(q)
-		logs += json.loads(request.read().decode())['result']
-		link = log[-1].get('next_link', '')
+		result = json.loads(request.read().decode())
+		logs.append(result['result'])
+		link = result.get('next_link', '')
 
 	articleIDs = [str(x['event']['article-id']) for log in logs for x in log]
 	userIDs = [str(x['user-id'] or x['ip-address']) for log in logs for x in log]
 	ratings = [VIEW_WEIGHT for log in logs for _ in range(len(log))]
+
+	if time:
+		timestamps = [float(log['time-stamp']) for log in logs for x in log]
+		return articleIDs, userIDs, ratings, timestamps
+	return articleIDs, userIDs, ratings
+
+def train_wals(args):
+	args = load_default_args(args)
+	articleIDs, userIDs, ratings = fetch_logs(args['article-view'])
 	df = json.dumps({args['col_order'][0] : userIDs, args['col_order'][1] : articleIDs, args['col_order'][2] : ratings})
 	result = core.preprocess.preprocess(df, **{k : args[k] for k in PREPROCESS_ARGS})
 	U, V = core.train.train_model(result['train'], **{k : args[k] for k in WALS_TRAIN_ARGS})
@@ -81,7 +93,28 @@ def train_wals(args):
 	r.set('train_error', core.train.rmse(U, V, result['train']))
 	r.set('test_error', core.train.rmse(U, V, result['test']))
 
+def train_timesvd(args):
+	args = load_default_args(args)
+	articleIDs, userIDs, ratings, timestamps = fetch_logs(args['article-view'], time = True)
+	if len(args['col_order']) < 4:
+		args['col_order'].append('timestamp')
+	df = json.dumps({args['col_order'][0] : userIDs, args['col_order'][1] : articleIDs, args['col_order'][2] : ratings, args['col_order'][3]: timestamps})
+	pre_result = core.preprocess.preprocess(df, timestamp = True, **{k : args[k] for k in PREPROCESS_ARGS})
+	train_result = core.train_temporal.train_model(pre_result['train'], pre_result['timestamp'], **{k : args[k] for k in TEMPORAL_TRAIN_ARGS})
+	pipe = r.pipeline()
+	redis_set_helper('U', U, pipe)
+	redis_set_helper('V', V, pipe)
+	pipe.set('t_user_map', json.dumps(pre_result['user_map'])).set('t_item_map', json.dumps(pre_result['item_map']))
+	pipe.execute()
+
+
 @app.route('/train', methods = ['POST'])
 def train():
-	Process(target = train_wals, args = (request.json,)).start()
+	model = request.json.get('model', DEFAULT_MODEL)
+	if model == 'wals':
+		Process(target = train_wals, args = (request.json,)).start()
+	elif model == 'timesvd':
+		Process(target = train_timesvd, args = (request.json,)).start()
+	else:
+		raise ValueError("Could not recognize model: {}.".format(model))
 	return "OK"
