@@ -12,14 +12,14 @@ from io import BytesIO
 from tensorflow.python.lib.io import file_io
 from tensorflow.core.framework.summary_pb2 import Summary
 
-def get_model(data, n_components = 10, unobserved_weight = 0, regularization = 0.05):
-	n_rows, n_cols = data.shape
-	r_weight = np.ones(n_rows)
-	c_weight = np.ones(n_cols)
+def get_model(data, ncomponents = 10, unobserved_weight = 0, regularization = 0.05):
+	nrows, ncols = data.shape
+	r_weight = np.ones(nrows)
+	c_weight = np.ones(ncols)
 
 	with tf.Graph().as_default():
 		tensor = tf.SparseTensor(np.column_stack((data.row, data.col)), (data.data).astype(np.float32), data.shape)
-		model = WALSModel(n_rows, n_cols, n_components, unobserved_weight, regularization, row_weights = r_weight, col_weights = c_weight)
+		model = WALSModel(nrows, ncols, ncomponents, unobserved_weight, regularization, row_weights = r_weight, col_weights = c_weight)
 	return tensor, model.row_factors[0], model.col_factors[0], model
 
 def get_session(model, input_tensor, niter = 20):
@@ -43,9 +43,9 @@ def get_session(model, input_tensor, niter = 20):
 
 	return session
 
-def train_model(data, niter = 20, n_components = 10, unobserved_weight = 0, regularization = 0.05):
+def train_model(data, niter = 20, ncomponents = 10, unobserved_weight = 0, regularization = 0.05):
 	tf.logging.info('Training Started: {:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now()))
-	input_tensor, r_factor, c_factor, model = get_model(data, n_components = n_components, unobserved_weight = unobserved_weight, regularization = regularization)
+	input_tensor, r_factor, c_factor, model = get_model(data, ncomponents = ncomponents, unobserved_weight = unobserved_weight, regularization = regularization)
 	session = get_session(model, input_tensor, niter = niter)
 	tf.logging.info('Training Finished: {:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now()))
 	U = r_factor.eval(session = session)
@@ -94,7 +94,7 @@ def getargs():
 		default = '.'
 	)
 	parser.add_argument(
-		'--n-components',
+		'--ncomponents',
 		type = int,
 		help = 'Number of latent factors',
 		default = 10
@@ -153,7 +153,7 @@ if __name__ == '__main__':
 	train = load_matrix(args['train_data'])
 	test = load_matrix(args['test_data'])
 	tf.logging.set_verbosity(tf.logging.INFO)
-	U, V = train_model(train, niter = args['niter'], n_components = args['n_components'], unobserved_weight = args['unobserved_weight'], regularization = args['regularization'])
+	U, V = train_model(train, niter = args['niter'], ncomponents = args['ncomponents'], unobserved_weight = args['unobserved_weight'], regularization = args['regularization'])
 	save_model(U, V)
 	train_error = rmse(U, V, train)
 	test_error = rmse(U, V, test)
