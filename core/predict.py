@@ -79,6 +79,7 @@ def predict(U, V, user_idx, n_recs = 5, user_map = None, item_map = None, lookup
         already_seen = M[user_idx].tocoo().cols if (M is not None) and user_idx >= 0 else []
         u = U[user_idx, :] if user_idx >= 0 else U.mean(axis = 0)
         pred = np.argsort(V.dot(u))[-1 : -len(already_seen) - n_recs - 1 : -1]
+        pred = [x for x in pred if x not in already_seen][:n_recs]
     else:
         pred = fallback[:n_recs]
 
