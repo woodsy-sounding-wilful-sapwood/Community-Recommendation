@@ -155,7 +155,7 @@ def preprocess(data, format = 'csv', kwargs = '{}', col_order = [0, 1, 2], k_cor
     item_map = get_map(item_ids)
     
     if save_map:
-        result['user_map'] = {k : v for v, k in enumerate(user_map[0])}
+        result['user_map'] = {str(k) : v for v, k in enumerate(user_map[0])}
         result['item_map'] = item_map[0].tolist()
 
     shape = (user_map[0].size, item_map[0].size)
