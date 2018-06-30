@@ -56,7 +56,7 @@ DEFAULT_MODEL = getenv('DEFAULT_MODEL', 'wals')
 def get_recommendations():
 	model = request.args.get('model', DEFAULT_MODEL)
 	if model == 'wals':
-		result = core.predict.predict(redis_get_helper('U'), redis_get_helper('V'), request.args.get('user'), request.args.get('nrecs', DEFAULT_RECS), user_map = json.loads(r.get('user_map').decode()), item_map = json.loads(r.get('item_map').decode()))
+		result = core.predict.predict(redis_get_helper('U'), redis_get_helper('V'), str(request.args.get('user')), request.args.get('nrecs', DEFAULT_RECS), user_map = json.loads(r.get('user_map').decode()), item_map = json.loads(r.get('item_map').decode()))
 	elif model == 'timesvd':
 		u = json.loads(r.get('t_user_map').decode()).get(str(request.args.get('user')), -1)
 		min_stamp = float(r.get('t_min_stamp'))
