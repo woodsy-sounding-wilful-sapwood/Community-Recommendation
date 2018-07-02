@@ -89,6 +89,17 @@ def get_args():
         type = bool,
         default = False
         )
+    parser.add_argument(
+        '--timestamp',
+        help = 'Save timestamp details.',
+        type = bool,
+        default = False
+        )
+    parser.add_argument(
+        '--timestamp-file',
+        help = 'Name of the the output file containing the training matrix. Default: test.npz',
+        default = 'timestamp.npz'
+        )
 
     parsed, unknown = parser.parse_known_args()
 
@@ -122,20 +133,19 @@ def k_filter(df, cols, k):
         return df
     return k_filter(df, cols, k)
 
-def main():
-    args, kwargs = get_args()
+def preprocess(data, format = 'csv', kwargs = '{}', col_order = [0, 1, 2], k_cores = 5, save_map = False, train_size = 0.75, dtype = np.float32, debug = False, timestamp = False):
+    result = {}
+    if format == 'csv':
+        df = pandas.read_csv(data, **kwargs)
+    elif format == 'json':
+        df = pandas.read_json(data, **kwargs)
 
-    if args.format == 'csv':
-        df = pandas.read_csv(args.data, **kwargs)
-    elif args.format == 'json':
-        df = pandas.read_json(args.data, **kwargs)
-
-    cols, col_type = handle_columns(args.col_order)
+    cols, col_type = handle_columns(col_order)
     if col_type == int:
         cols = [df.columns[x] for x in cols]
 
-    if args.k_cores > 0:
-        df = k_filter(df, cols, args.k_cores)
+    if k_cores > 0:
+        df = k_filter(df, cols, k_cores)
     
     user_ids = df[cols[0]].values
     item_ids = df[cols[1]].values
@@ -144,21 +154,39 @@ def main():
     user_map = get_map(user_ids)
     item_map = get_map(item_ids)
     
-    if args.save_map:
-        json_dump({k : v for v, k in enumerate(user_map[0])}, os.path.join(args.output, args.user_map))
-        json_dump(item_map[0].tolist(), os.path.join(args.output, args.item_map))
+    if save_map:
+        result['user_map'] = {str(k) : v for v, k in enumerate(user_map[0])}
+        result['item_map'] = item_map[0].tolist()
 
     shape = (user_map[0].size, item_map[0].size)
-    train_ratings, test_ratings, train_users, test_users, train_items, test_items = train_test_split(ratings, user_map[1], item_map[1], test_size = 1 - args.train_size)
-    train = coo_matrix((train_ratings.astype(args.dtype), (train_users, train_items)), shape = shape)
-    test = coo_matrix((test_ratings.astype(args.dtype), (test_users, test_items)), shape = shape)
+    train_ratings, test_ratings, train_users, test_users, train_items, test_items = train_test_split(ratings, user_map[1], item_map[1], test_size = 1 - train_size)
+    result['train'] = coo_matrix((train_ratings.astype(dtype), (train_users, train_items)), shape = shape)
+    result['test'] = coo_matrix((test_ratings.astype(dtype), (test_users, test_items)), shape = shape)
 
-    if args.debug:
-        print('train: ', repr(train))
-        print('test: ', repr(test))
+    if timestamp:
+        times = df[cols[3]].values.astype(np.float32)
+        result['timestamp'] = coo_matrix((times, (user_map[1], item_map[1])), shape = shape)
 
-    save_npz(os.path.join(args.output, args.train_file), train)
-    save_npz(os.path.join(args.output, args.test_file), test)
+    if debug:
+        print('train: ', repr(result['train'] ))
+        print('test: ', repr(result['test'] ))
+
+    return result
+
+def main():
+    args, kwargs = get_args()
+
+    result = preprocess(args.data, format = args.format, kwargs = kwargs, col_order = args.col_order, k_cores = args.k_cores, save_map = args.save_map, output = args.output, user_map = args.user_map, item_map = args.item_map, train_size = args.train_size, dtype = args.dtype, debug=args.debug, timestamp = args.timestamp)
+
+    if args.save_map:
+        json_dump(result['user_map'], os.path.join(args.output, args.user_map))
+        json_dump(result['item_map'], os.path.join(args.output, args.item_map))
+
+    if args.timestamp:
+        save_npz(os.path.join(args.output, args.timestamp_file), result['timestamp'])
+
+    save_npz(os.path.join(args.output, args.train_file), result['train'])
+    save_npz(os.path.join(args.output, args.test_file), result['test'])
 
 if __name__ == '__main__':
     main()
