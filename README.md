@@ -69,7 +69,7 @@ eg: `curl -i -X POST -H 'Content-Type: application/json' -d '{"article-view": "h
 * Install redis (eg: `sudo apt-get install redis-server`)
 * Create a virtual environment (eg: `virtualenv --system-site-packages -p python3 rec_api`)
 * Activate the virtual environment (eg: `source ~/rec_api/bin/activate`)
-* Clone this repo (eg: `git clone https://github.com/woodsy-sounding-wilful-sapwood/Community-Recommendation.git`)
+* Clone this repo (eg: `git clone https://github.com/fresearchgroup/Community-Recommendation.git`)
 * Install dependencies (eg: `pip3 install -r requirements.txt`)
 * Set up Flask (eg: `export FLASK_APP=flask_api.py`)
 * Run the server (eg: `flask run --host 0.0.0.0 --port 3445`)
