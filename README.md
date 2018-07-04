@@ -64,13 +64,24 @@ eg: `curl -i -X POST -H 'Content-Type: application/json' -d '{"article-view": "h
 
 ### Installation
 
-#### For Ubuntu
+#### Installation in a Virtual environment
 
-* Install redis (eg: `sudo apt-get install redis-server`)
-* Create a virtual environment (eg: `virtualenv --system-site-packages -p python3 rec_api`)
-* Activate the virtual environment (eg: `source ~/rec_api/bin/activate`)
-* Clone this repo (eg: `git clone https://github.com/woodsy-sounding-wilful-sapwood/Community-Recommendation.git`)
-* Install dependencies (eg: `pip3 install -r requirements.txt`)
-* Set up Flask (eg: `export FLASK_APP=flask_api.py`)
+* Install redis: `sudo apt−get install redis−server`)
+* Create a virtual environment: `virtualenv --system-site-packages -p python3 rec_api`
+* Activate the virtual environment: `source ~/rec_api/bin/activate`
+* Clone this repo: `git clone https://github.com/woodsy-sounding-wilful-sapwood/Community-Recommendation.git`
+* Change into the directory: `cd Community-Recommendation`
+* Install dependencies: `pip3 install -r requirements.txt`
+* Set up Flask: `export FLASK_APP=flask_api.py` and, optionally, `export FLASK_ENV=development`
+* Set the token for event logs: `export LOG_AUTH_TOKEN=Your_Token_Here`
 * Run the server (eg: `flask run --host 0.0.0.0 --port 3445`)
-* Execute POST and GET requests as outlined above
+
+#### Installation using Docker
+
+* Install [Docker](https://docs.docker.com/install/linux/docker-ce/ubuntu/) and [Docker-Compose](https://docs.docker.com/compose/install/#install-compose)
+* Clone this repo: `git clone https://github.com/woodsy-sounding-wilful-sapwood/Community-Recommendation.git`
+* Change into the directory: `cd Community-Recommendation`
+* Add the event logs token: ` echo ”Your Token Here” >> .env`
+* Build the system: `sudo docker-compose build`
+* Run the system: `sudo docker-compose up`
+
