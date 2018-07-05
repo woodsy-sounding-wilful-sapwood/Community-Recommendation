@@ -1,9 +1,11 @@
 import datetime
 import json
+import matplotlib
+matplotlib.use('Agg')
 
 import numpy as np
 
-from flask import Flask, request
+from flask import Flask, request, send_file
 from subprocess import check_output
 from urllib.request import urlopen, Request
 from redis import Redis
@@ -16,6 +18,7 @@ import core.predict
 import core.preprocess
 import core.train
 import core.train_temporal
+import core.visualise
 
 app = Flask(__name__)
 r = Redis(host = getenv('REDIS_HOSTNAME', 'redis'), port = int(getenv('REDIS_PORT', 6379)))
@@ -131,6 +134,8 @@ def train_wals(args):
 	pipe = r.pipeline()
 	redis_set_helper('U', U, pipe)
 	redis_set_helper('V', V, pipe)
+	redis_set_helper('train', result['train'], pipe, True)
+	redis_set_helper('test', result['test'], pipe, True)
 	pipe.set('user_map', json.dumps(result['user_map'])).set('item_map', json.dumps(result['item_map']))
 	pipe.execute()
 	r.set('train_error', core.train.rmse(U, V, result['train']))
@@ -146,6 +151,7 @@ def train_timesvd(args):
 	train_result = core.train_temporal.train_model(pre_result['train'], pre_result['timestamp'], **{k : args[k] for k in TEMPORAL_TRAIN_ARGS})
 	pipe = r.pipeline()
 	redis_set_helper('t_train', pre_result['train'], pipe, True)
+	redis_set_helper('t_test', pre_result['train'], pipe, True)
 	redis_set_helper('t_user_mean_time', train_result['user_mean_time'], pipe)
 	redis_set_helper('t_item_biases', train_result['item_biases'], pipe)
 	redis_set_helper('t_b_it', train_result['b_it'], pipe)
@@ -175,3 +181,10 @@ def train():
 	else:
 		raise ValueError("Could not recognize model: {}.".format(model))
 	return "OK"
+
+@app.route('/visual')
+def visualise():
+	train = redis_get_helper('train', True).tocsr()
+	test = redis_get_helper('test', True).tocsr()
+	img = core.visualise.visualise(redis_get_helper('U'), redis_get_helper('V'), item_map = json.loads(r.get('item_map').decode()), M = train + test, r = request.args.get('r', 1), idx = request.args.get('user', -1))
+	return send_file(img, mimetype = 'image/png')
