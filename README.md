@@ -71,14 +71,16 @@ eg: `http://localhost:3445/visual?user=1&r=3`
 
 #### Installation in a Virtual environment
 
+
 * Install redis: `sudo apt−get install redis−server`)
 * Create a virtual environment: `virtualenv --system-site-packages -p python3 rec_api`
 * Activate the virtual environment: `source ~/rec_api/bin/activate`
-* Clone this repo: `git clone https://github.com/woodsy-sounding-wilful-sapwood/Community-Recommendation.git`
+* Clone this repo: `git clone https://github.com/fresearchgroup/Community-Recommendation.git`
 * Change into the directory: `cd Community-Recommendation`
 * Install dependencies: `pip3 install -r requirements.txt`
 * Set up Flask: `export FLASK_APP=flask_api.py` and, optionally, `export FLASK_ENV=development`
 * Set the token for event logs: `export LOG_AUTH_TOKEN=Your_Token_Here`
+
 * Run the server (eg: `flask run --host 0.0.0.0 --port 3445`)
 
 #### Installation using Docker
