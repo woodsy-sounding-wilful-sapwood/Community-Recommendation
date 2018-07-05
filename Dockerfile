@@ -1,7 +1,8 @@
 FROM ubuntu:latest
 RUN apt-get update -y
-RUN apt-get install -y python3-pip python3-dev
-COPY . /rec_api
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get install -y python3-pip python3-dev python3-tk python3
 WORKDIR /rec_api
+ADD ./requirements.txt /rec_api/requirements.txt
 RUN pip3 install -r requirements.txt
-ENTRYPOINT python3 -m flask run --host 0.0.0.0 --port 3445
+ADD . /rec_api
